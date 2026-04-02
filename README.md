@@ -32,6 +32,7 @@ Skills are invoked with a slash command (e.g. `/prompt-engineer`). They run in y
 | **prompt-engineer** | `/prompt-engineer` | Collaboratively designs high-performance AI prompts. Covers persona, format, constraints, edge cases, hallucination mitigation, and self-evaluation. Includes a stress-test mode and a deep-dive reference guide covering model selection and temperature tuning. |
 | **swarm-architect** | `/swarm-architect` | Designs complete multi-agent systems — agent rosters, topology (pipeline/parallel/hierarchical/mesh), handoff contracts, per-agent prompts, and a swarm health checklist. Includes domain templates for finance, legal, healthcare, research, and more. |
 | **code-researcher** | `/code-researcher` | Iteratively analyzes and improves a file, directory, or workflow. Identifies bottlenecks, bugs, and inefficiencies, applies targeted fixes, validates results, and logs findings. |
+| **knowledge-compressor** | `/knowledge-compressor` | Compresses large, multi-source documentation (technical specs, standards, policies) into a machine-readable Logic Blueprint. Outputs four structured vaults — Governance Gate (rules), Quantitative Engine (formulas/KPIs), Procedural Workflow (Mermaid.js logic), and Semantic Glossary — using the most token-efficient encoding per vault. |
 
 ### Agents
 
@@ -54,6 +55,9 @@ Single-model chains break down on complex, multi-domain tasks. This skill exists
 ### `code-researcher`
 Claude can review code in conversation, but it loses context, doesn't validate, and doesn't document. This skill adds the missing loop: analyze → hypothesize → modify → validate → log. It's meant to be run on a file or workflow the way you'd run a senior engineer through a code review.
 
+### `knowledge-compressor`
+Complex domains — cybersecurity frameworks, project management standards, compliance requirements — are documented in sprawling, human-readable prose that is expensive to feed into an AI system. This skill solves the token problem: it strips narrative, resolves conflicting source values into ranges, and reconstructs the knowledge as hard rules, formulas, and decision logic in YAML, JSON, or Mermaid.js. The output is designed to be pasted directly into another AI prompt as a dense, authoritative context block.
+
 ### `improve` (agent)
 A general-purpose improvement loop that runs on Opus for maximum reasoning depth. Unlike `/code-researcher`, it also handles Claude skills themselves — it can audit and rewrite other plugins in this repo. It was built so that the toolset can self-improve rather than requiring manual maintenance.
 
@@ -72,8 +76,10 @@ claude-plugins/
 │   │   └── references/
 │   │       ├── domain-rosters.md   # Pre-built agent teams by domain
 │   │       └── swarm-topologies.md # Topology diagrams and handoff templates
-│   └── code-researcher/
-│       └── SKILL.md                # Code and process improvement loop
+│   ├── code-researcher/
+│   │   └── SKILL.md                # Code and process improvement loop
+│   └── knowledge-compressor/
+│       └── SKILL.md                # Semantic compression engine (four vaults)
 │
 ├── plugins/                        # Plugin-style agents (support model selection)
 │   └── improve/
@@ -111,6 +117,7 @@ git clone https://github.com/charliedelph/claude-plugins.git ~/claude-plugins
 ln -s ~/claude-plugins/skills/prompt-engineer ~/.claude/skills/prompt-engineer
 ln -s ~/claude-plugins/skills/swarm-architect ~/.claude/skills/swarm-architect
 ln -s ~/claude-plugins/skills/code-researcher ~/.claude/skills/code-researcher
+ln -s ~/claude-plugins/skills/knowledge-compressor ~/.claude/skills/knowledge-compressor
 
 # 3. Install the improve agent
 ln -s ~/claude-plugins/plugins/improve ~/.claude/plugins/improve
@@ -165,6 +172,7 @@ ln -s ~/claude-plugins/skills/code-researcher ~/.claude/skills/code-researcher
 cp -r ~/claude-plugins/skills/prompt-engineer ~/.claude/skills/
 cp -r ~/claude-plugins/skills/swarm-architect ~/.claude/skills/
 cp -r ~/claude-plugins/skills/code-researcher ~/.claude/skills/
+cp -r ~/claude-plugins/skills/knowledge-compressor ~/.claude/skills/
 ```
 
 ### Step 5: Install the improve agent
@@ -246,6 +254,33 @@ Output includes:
 # Review a process or workflow by description
 /code-researcher our nightly data ingestion pipeline
 ```
+
+---
+
+### `/knowledge-compressor`
+
+```
+# Compress a named standard or framework
+/knowledge-compressor NIST CSF
+
+/knowledge-compressor PMBOK 7th Edition
+
+/knowledge-compressor SOC 2 Type II
+
+# Paste content directly after the command
+/knowledge-compressor [paste your document text here]
+
+# Combine multiple sources
+/knowledge-compressor OWASP Top 10 + NIST 800-53
+```
+
+Output is structured into four machine-readable vaults:
+- **Governance Gate** — mandatory/forbidden rules with impact levels and violation triggers
+- **Quantitative Engine** — formulas, KPIs, and thresholds; conflicting values encoded as `[MIN..MAX]` ranges
+- **Procedural Workflow** — decision logic in Mermaid.js; linear steps in YAML
+- **Semantic Glossary** — one-sentence technical definitions, no elaboration
+
+The compressed output is designed to be pasted directly into another AI prompt as a high-density context block, reducing token cost while preserving all actionable logic.
 
 ---
 
