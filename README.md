@@ -15,6 +15,7 @@ These tools were developed to close the gap between "asking Claude a question" a
 - [Quick start (recommended)](#quick-start-recommended)
 - [Installation — step by step](#installation--step-by-step)
 - [Usage guide](#usage-guide)
+- [Using these prompts with other AI platforms](#using-these-prompts-with-other-ai-platforms)
 - [Configuration](#configuration)
 - [For contributors: branching and pull requests](#for-contributors-branching-and-pull-requests)
 - [License](#license)
@@ -282,6 +283,13 @@ Output is structured into four machine-readable vaults:
 
 The compressed output is designed to be pasted directly into another AI prompt as a high-density context block, reducing token cost while preserving all actionable logic.
 
+> **Model recommendation:** This skill processes large volumes of source documentation simultaneously. Models with large context windows are strongly recommended when compressing multiple or lengthy documents:
+> - **Gemini 1.5 Pro / 2.0 Flash / 2.5 Pro** (1M+ token context) — best choice for multi-document compression
+> - **GPT-4o** with extended context — good alternative
+> - **Claude Sonnet / Opus** — works well for single documents or shorter inputs; may struggle with very large multi-source jobs
+>
+> When in doubt, run this skill's prompt directly in [Google AI Studio](https://aistudio.google.com) for maximum context headroom.
+
 ---
 
 ### `improve` agent
@@ -294,6 +302,144 @@ improve the swarm-architect skill
 improve all skills
 run the improve agent on our deployment process
 ```
+
+---
+
+## Using these prompts with other AI platforms
+
+The `/skill-name` commands and the `improve` agent are Claude Code features — they rely on how Claude Code loads and invokes SKILL.md files. But the **prompt content inside each skill is plain text** and works with any capable LLM. You can copy the body of any SKILL.md and paste it directly into ChatGPT, Gemini, or a local model.
+
+This is especially useful for `knowledge-compressor`, where Gemini's 1M+ token context window is a significant advantage over Claude's smaller window.
+
+---
+
+### Using with Gemini (recommended for knowledge-compressor)
+
+**Google AI Studio (free, no setup):**
+
+1. Go to [aistudio.google.com](https://aistudio.google.com)
+2. Click **Create new prompt** → **System instructions**
+3. Open `skills/knowledge-compressor/SKILL.md` from this repo, copy everything below the `---` frontmatter divider, and paste it into the System Instructions box
+4. In the main prompt field, type your document or domain (e.g. `NIST CSF`) and run it
+5. Use **Gemini 1.5 Pro** or **Gemini 2.5 Pro** for maximum context window
+
+**Gemini API (programmatic):**
+
+```python
+import google.generativeai as genai
+
+genai.configure(api_key="YOUR_API_KEY")
+
+with open("skills/knowledge-compressor/SKILL.md") as f:
+    skill = f.read()
+# Strip the YAML frontmatter (lines between the --- markers)
+system_prompt = skill.split("---", 2)[2].strip()
+
+model = genai.GenerativeModel(
+    model_name="gemini-1.5-pro",
+    system_instruction=system_prompt
+)
+response = model.generate_content("NIST CSF")
+print(response.text)
+```
+
+---
+
+### Using with ChatGPT / GPT-4o
+
+**ChatGPT (browser):**
+
+1. Go to [chatgpt.com](https://chatgpt.com) and start a new chat
+2. Open the SKILL.md file for the skill you want to use
+3. Copy everything below the `---` frontmatter divider
+4. Paste it as your first message, prefixed with: `"Please adopt the following role and instructions:"`
+5. Send a follow-up message with your actual request (e.g. `"Now compress: OWASP Top 10"`)
+
+**Custom GPT (persistent setup):**
+
+1. Go to [chatgpt.com/gpts/editor](https://chatgpt.com/gpts/editor)
+2. Paste the skill body into the **Instructions** field
+3. Save and use it as a reusable GPT — no re-pasting needed
+
+**OpenAI API (programmatic):**
+
+```python
+from openai import OpenAI
+
+with open("skills/knowledge-compressor/SKILL.md") as f:
+    skill = f.read()
+system_prompt = skill.split("---", 2)[2].strip()
+
+client = OpenAI(api_key="YOUR_API_KEY")
+response = client.chat.completions.create(
+    model="gpt-4o",
+    messages=[
+        {"role": "system", "content": system_prompt},
+        {"role": "user", "content": "NIST CSF"}
+    ]
+)
+print(response.choices[0].message.content)
+```
+
+---
+
+### Using locally (Ollama / LM Studio)
+
+Running a model on your own machine gives you full privacy and no API costs. For best results with these skills, use a model with at least 7B parameters. For `knowledge-compressor`, 70B+ or a quantized Mixtral/Llama 3 is recommended.
+
+**Ollama:**
+
+```bash
+# Install Ollama: https://ollama.com
+# Pull a model
+ollama pull llama3.1:70b
+
+# Run with a skill as the system prompt
+SYSTEM=$(awk '/^---/{n++; if(n==2){found=1; next}} found{print}' skills/knowledge-compressor/SKILL.md)
+ollama run llama3.1:70b "$SYSTEM
+
+User: NIST CSF"
+```
+
+**LM Studio:**
+
+1. Download and open [LM Studio](https://lmstudio.ai)
+2. Download a model (Llama 3.1 70B, Mixtral 8x7B, or similar)
+3. Go to the **Chat** tab → click the system prompt field
+4. Paste the skill body (everything below the frontmatter `---`)
+5. Chat normally
+
+**Ollama API (programmatic):**
+
+```python
+import requests, json
+
+with open("skills/knowledge-compressor/SKILL.md") as f:
+    skill = f.read()
+system_prompt = skill.split("---", 2)[2].strip()
+
+response = requests.post("http://localhost:11434/api/chat", json={
+    "model": "llama3.1:70b",
+    "messages": [
+        {"role": "system", "content": system_prompt},
+        {"role": "user", "content": "NIST CSF"}
+    ],
+    "stream": False
+})
+print(response.json()["message"]["content"])
+```
+
+---
+
+### Platform comparison
+
+| Platform | Best for | Context window | Cost |
+|---|---|---|---|
+| **Claude Code** (`/skill-name`) | Native integration, agent workflows | 200K tokens | Claude subscription |
+| **Gemini AI Studio** | Large document compression | 1M+ tokens | Free tier available |
+| **ChatGPT / Custom GPT** | Persistent reusable setups | 128K tokens | ChatGPT Plus |
+| **OpenAI API** | Programmatic use, automation | 128K tokens | Pay per token |
+| **Ollama / LM Studio** | Privacy, no cost, offline use | Model-dependent | Free |
 
 ---
 
